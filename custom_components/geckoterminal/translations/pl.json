@@ -7,7 +7,11 @@
         "data": {
           "name": "Nazwa sensora",
           "network": "Sieć (np. ethereum, bsc, abstract)",
-          "pool_address": "Adres puli"
+          "pool_address": "Adres puli",
+          "show_volume": "Pokaż wolumen 24h",
+          "decimal_places": "Liczba miejsc po przecinku (cena)",
+          "show_fdv": "Pokaż wycenę FDV w czytelnym formacie",
+          "update_interval": "Częstotliwość aktualizacji (sekundy, 5-60)"
         }
       }
     },
@@ -29,7 +33,11 @@
         "data": {
           "name": "Nazwa sensora",
           "network": "Sieć",
-          "pool_address": "Adres puli"
+          "pool_address": "Adres puli",
+          "show_volume": "Pokaż wolumen 24h",
+          "decimal_places": "Liczba miejsc po przecinku (cena)",
+          "show_fdv": "Pokaż wycenę FDV w czytelnym formacie",
+          "update_interval": "Częstotliwość aktualizacji (sekundy, 5-60)"
         }
       }
     }

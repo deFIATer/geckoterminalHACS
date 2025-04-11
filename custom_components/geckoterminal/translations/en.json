@@ -7,7 +7,11 @@
         "data": {
           "name": "Sensor name",
           "network": "Network (e.g. ethereum, bsc, abstract)",
-          "pool_address": "Pool address"
+          "pool_address": "Pool address",
+          "show_volume": "Show 24h volume",
+          "decimal_places": "Decimal places (price)",
+          "show_fdv": "Show FDV in readable format",
+          "update_interval": "Update frequency (seconds, 5-60)"
         }
       }
     },
@@ -29,7 +33,11 @@
         "data": {
           "name": "Sensor name",
           "network": "Network",
-          "pool_address": "Pool address"
+          "pool_address": "Pool address",
+          "show_volume": "Show 24h volume",
+          "decimal_places": "Decimal places (price)",
+          "show_fdv": "Show FDV in readable format",
+          "update_interval": "Update frequency (seconds, 5-60)"
         }
       }
     }

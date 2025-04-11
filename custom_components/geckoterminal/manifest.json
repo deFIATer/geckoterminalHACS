@@ -1,11 +1,13 @@
 {
   "domain": "geckoterminal",
   "name": "GeckoTerminal",
-  "version": "1.0.1",
+  "version": "1.2.1",
   "documentation": "https://github.com/deFIATer/geckoterminalHACS",
-  "requirements": [],
+  "issue_tracker": "https://github.com/deFIATer/geckoterminalHACS/issues",
+  "requirements": ["requests"],
   "dependencies": [],
   "codeowners": ["@deFIATer"],
   "config_flow": true,
-  "iot_class": "cloud_polling"
+  "iot_class": "cloud_polling",
+  "loggers": ["geckoterminal"]
 }
