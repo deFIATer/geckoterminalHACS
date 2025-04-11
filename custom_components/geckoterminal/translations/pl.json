@@ -1,0 +1,37 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Dodaj sensor GeckoTerminal",
+        "description": "Wprowadź szczegóły dla puli tokenów, którą chcesz monitorować. Możesz dodać wiele sensorów, powtarzając ten proces. Wpisz dowolną sieć obsługiwaną przez GeckoTerminal (np. {examples}).",
+        "data": {
+          "name": "Nazwa sensora",
+          "network": "Sieć (np. ethereum, bsc, abstract)",
+          "pool_address": "Adres puli"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie można połączyć",
+      "invalid_auth": "Nieprawidłowe uwierzytelnienie",
+      "unknown": "Nieznany błąd",
+      "network_not_supported": "Sieć nie jest wspierana",
+      "invalid_pool_address": "Nieprawidłowy adres puli lub sieć"
+    },
+    "abort": {
+      "already_configured": "Ten sensor jest już skonfigurowany. Wybierz inny adres puli lub sieć."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edytuj sensor GeckoTerminal",
+        "data": {
+          "name": "Nazwa sensora",
+          "network": "Sieć",
+          "pool_address": "Adres puli"
+        }
+      }
+    }
+  }
+} 

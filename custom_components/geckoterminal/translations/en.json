@@ -3,10 +3,10 @@
     "step": {
       "user": {
         "title": "Add GeckoTerminal sensor",
-        "description": "Enter details for the token pool you want to monitor.",
+        "description": "Enter details for the token pool you want to monitor. You can add multiple sensors by repeating this process. Enter any network supported by GeckoTerminal (e.g. {examples}).",
         "data": {
           "name": "Sensor name",
-          "network": "Network (e.g. base, ethereum)",
+          "network": "Network (e.g. ethereum, bsc, abstract)",
           "pool_address": "Pool address"
         }
       }
@@ -14,10 +14,12 @@
     "error": {
       "cannot_connect": "Cannot connect",
       "invalid_auth": "Invalid authentication",
-      "unknown": "Unknown error"
+      "unknown": "Unknown error",
+      "network_not_supported": "Network not supported",
+      "invalid_pool_address": "Invalid pool address or network"
     },
     "abort": {
-      "already_configured": "This sensor is already configured"
+      "already_configured": "This sensor is already configured. Choose a different pool address or network."
     }
   },
   "options": {

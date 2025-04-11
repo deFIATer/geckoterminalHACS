@@ -13,7 +13,20 @@ async def async_setup(hass, config):
     return True
 
 async def async_setup_entry(hass, config_entry):
-    hass.async_create_task(
-        async_load_platform(hass, "sensor", DOMAIN, config_entry.data, config_entry.data)
-    )
-    return True
+    _LOGGER.debug(f"Setting up GeckoTerminal integration with config: {config_entry.data}")
+    
+    try:
+        hass.async_create_task(
+            async_load_platform(
+                hass, 
+                "sensor", 
+                DOMAIN, 
+                config_entry.data, 
+                config_entry.data
+            )
+        )
+        _LOGGER.debug("GeckoTerminal sensor platform loaded successfully")
+        return True
+    except Exception as e:
+        _LOGGER.error(f"Failed to set up GeckoTerminal integration: {e}")
+        return False
