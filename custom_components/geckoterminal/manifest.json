@@ -2,9 +2,10 @@
   "domain": "geckoterminal",
   "name": "GeckoTerminal",
   "version": "1.0.0",
-  "documentation": "https://github.com/deFIATer/geckoterminalHACS",
+  "documentation": "https://github.com/deFIATer/geckoterminal-homeassistant",
   "requirements": [],
   "dependencies": [],
   "codeowners": ["@deFIATer"],
-  "config_flow": true
+  "config_flow": true,
+  "iot_class": "cloud_polling"
 }
