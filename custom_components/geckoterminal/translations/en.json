@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add GeckoTerminal sensor",
+        "description": "Enter details for the token pool you want to monitor.",
+        "data": {
+          "name": "Sensor name",
+          "network": "Network (e.g. base, ethereum)",
+          "pool_address": "Pool address"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unknown error"
+    },
+    "abort": {
+      "already_configured": "This sensor is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edit GeckoTerminal sensor",
+        "data": {
+          "name": "Sensor name",
+          "network": "Network",
+          "pool_address": "Pool address"
+        }
+      }
+    }
+  }
+}

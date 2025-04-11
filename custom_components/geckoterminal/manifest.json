@@ -1,0 +1,10 @@
+{
+  "domain": "geckoterminal",
+  "name": "GeckoTerminal",
+  "version": "1.0.0",
+  "documentation": "https://github.com/deFIATer/geckoterminalHACS",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@deFIATer"],
+  "config_flow": true
+}
