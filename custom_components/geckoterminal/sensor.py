@@ -32,19 +32,55 @@ async def async_setup_entry(
     show_fdv = entry.data.get(CONF_SHOW_FDV, True)
     update_interval = entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
     
-    # Utwórz i dodaj sensor
-    sensor = GeckoTerminalSensor(
-        hass, 
+    # Tworzymy źródło danych, które będzie współdzielone przez wszystkie sensory
+    data_source = GeckoTerminalDataSource(hass, network, pool_address, update_interval)
+    
+    # Główny sensor ceny
+    price_sensor = GeckoTerminalPriceSensor(
+        data_source, 
         entry.entry_id, 
         name, 
         network, 
         pool_address, 
-        show_volume, 
-        decimal_places, 
-        show_fdv,
-        update_interval
+        decimal_places
     )
-    async_add_entities([sensor], True)
+    
+    entities = [price_sensor]
+    
+    # Sensor wolumenu 24h, jeśli opcja włączona
+    if show_volume:
+        volume_sensor = GeckoTerminalVolumeSensor(
+            data_source,
+            entry.entry_id,
+            name,
+            network,
+            pool_address
+        )
+        entities.append(volume_sensor)
+    
+    # Sensor FDV, jeśli opcja włączona
+    if show_fdv:
+        fdv_sensor = GeckoTerminalFDVSensor(
+            data_source,
+            entry.entry_id,
+            name,
+            network,
+            pool_address
+        )
+        entities.append(fdv_sensor)
+    
+    # Sensor ceny z określoną liczbą miejsc po przecinku
+    formatted_price_sensor = GeckoTerminalFormattedPriceSensor(
+        data_source,
+        entry.entry_id,
+        name,
+        network,
+        pool_address,
+        decimal_places
+    )
+    entities.append(formatted_price_sensor)
+    
+    async_add_entities(entities, True)
 
 def validate_pool_address(network, pool_address):
     """Validate if the pool address exists for the given network."""
@@ -85,8 +121,12 @@ def validate_pool_address(network, pool_address):
 def format_price(price_str, decimal_places):
     """Format price with specified decimal places."""
     try:
+        # Upewnij się, że price_str jest liczbą zmiennoprzecinkową
         price_float = float(price_str)
-        return round(price_float, decimal_places)
+        # Formatuj cenę z określoną liczbą miejsc po przecinku
+        formatted_price = round(price_float, decimal_places)
+        # Upewnij się, że zawsze wyświetla się dokładnie decimal_places cyfr po przecinku
+        return '{:.{prec}f}'.format(formatted_price, prec=decimal_places)
     except (ValueError, TypeError):
         return price_str
 
@@ -105,75 +145,49 @@ def format_fdv(fdv_str):
     except (ValueError, TypeError):
         return fdv_str
 
-class GeckoTerminalSensor(SensorEntity):
-    """Representation of a GeckoTerminal sensor."""
-
-    def __init__(self, hass, entry_id, name, network, pool_address, 
-                 show_volume=True, decimal_places=2, show_fdv=True,
-                 update_interval=DEFAULT_UPDATE_INTERVAL):
-        """Initialize the sensor."""
+class GeckoTerminalDataSource:
+    """Data source for GeckoTerminal sensors."""
+    
+    def __init__(self, hass, network, pool_address, update_interval):
+        """Initialize the data source."""
         self.hass = hass
-        self._entry_id = entry_id
-        self._name = name
         self._network = network
         self._pool_address = pool_address
-        self._show_volume = show_volume
-        self._decimal_places = decimal_places
-        self._show_fdv = show_fdv
         self._update_interval = update_interval
-        self._state = None
-        self._attrs = {}
+        self._data = None
+        self._last_update = None
         self._available = True
-        self._attr_native_unit_of_measurement = "USD"
-        
-        # Unikalny ID dla sensora
-        self._attr_unique_id = f"{DOMAIN}_{network}_{pool_address}"
-        
-        # Informacje o urządzeniu
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, self._attr_unique_id)},
-            "name": f"{name} ({network})",
-            "manufacturer": "GeckoTerminal",
-            "model": f"Pool: {pool_address}",
-            "sw_version": "1.2.0",
-            "via_device": (DOMAIN, network),
-        }
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def native_value(self):
-        """Return the state of the sensor."""
-        if self._state is None:
-            return None
-        return format_price(self._state, self._decimal_places)
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend."""
-        return "mdi:currency-usd"
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        return self._attrs
-
+        self._listeners = []
+    
     @property
     def available(self):
-        """Return if entity is available."""
+        """Return if data source is available."""
         return self._available
-        
+    
+    @property
+    def data(self):
+        """Return the data."""
+        return self._data
+    
     @property
     def scan_interval(self):
-        """Return the scan interval for this entity."""
+        """Return the scan interval."""
         return timedelta(seconds=self._update_interval)
-
+    
+    def register_listener(self, listener):
+        """Register a listener."""
+        self._listeners.append(listener)
+    
     async def async_update(self):
-        """Fetch new state data for the sensor."""
-        _LOGGER.debug(f"Aktualizacja sensora GeckoTerminal dla sieci: {self._network}, puli: {self._pool_address}")
+        """Fetch new state data for all sensors."""
+        _LOGGER.debug(f"Aktualizacja danych GeckoTerminal dla sieci: {self._network}, puli: {self._pool_address}")
+        
+        # Sprawdź, czy minął czas od ostatniej aktualizacji
+        now = datetime.now()
+        if (self._last_update is not None and 
+            (now - self._last_update) < timedelta(seconds=self._update_interval)):
+            _LOGGER.debug("Pomijam aktualizację, zbyt krótki czas od ostatniej aktualizacji")
+            return
         
         url = f"https://api.geckoterminal.com/api/v2/networks/{self._network}/pools/{self._pool_address}"
         try:
@@ -185,59 +199,25 @@ class GeckoTerminalSensor(SensorEntity):
             if not response:
                 _LOGGER.error("Brak odpowiedzi z GeckoTerminal API")
                 self._available = False
+                self._notify_listeners()
                 return
                 
             self._available = True
             
             if "data" in response and "attributes" in response["data"]:
-                attributes = response["data"]["attributes"]
-                
-                # Ustaw stan sensora (cena)
-                if "base_token_price_usd" in attributes:
-                    self._state = attributes["base_token_price_usd"]
-                
-                # Pobierz podstawowe informacje
-                base_token_symbol = attributes.get("base_token_symbol", "")
-                quote_token_symbol = attributes.get("quote_token_symbol", "")
-                
-                # Dodaj podstawowe atrybuty
-                self._attrs["base_token_symbol"] = base_token_symbol
-                self._attrs["quote_token_symbol"] = quote_token_symbol
-                self._attrs["pool_name"] = attributes.get("name", f"{base_token_symbol}/{quote_token_symbol}")
-                self._attrs["pool_address"] = self._pool_address
-                self._attrs["update_interval"] = f"{self._update_interval} s"
-                
-                # Dodaj zmianę ceny, jeśli dostępna
-                if "price_change_percentage" in attributes:
-                    price_changes = attributes["price_change_percentage"]
-                    for period, value in price_changes.items():
-                        self._attrs[f"price_change_{period}"] = f"{value}%"
-                
-                # Dodaj wolumen 24h, jeśli opcja włączona
-                if self._show_volume and "volume_usd" in attributes and "h24" in attributes["volume_usd"]:
-                    volume_24h = attributes["volume_usd"]["h24"]
-                    self._attrs["volume_24h"] = format_fdv(volume_24h)
-                
-                # Dodaj FDV (Fully Diluted Valuation), jeśli opcja włączona
-                if self._show_fdv and "fdv_usd" in attributes:
-                    fdv = attributes["fdv_usd"]
-                    self._attrs["fdv"] = format_fdv(fdv)
-                
-                # Dodaj informację o czasie ostatniej aktualizacji
-                self._attrs["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                
-                # Sprawdź, czy udało się ustawić stan
-                if "base_token_price_usd" not in attributes:
-                    _LOGGER.error(f"Nieprawidłowa struktura danych z API GeckoTerminal: brak base_token_price_usd")
-                    self._state = None
+                self._data = response["data"]["attributes"]
+                self._last_update = now
+                _LOGGER.debug(f"Dane zaktualizowane pomyślnie, dostępne atrybuty: {list(self._data.keys())}")
             else:
                 _LOGGER.error(f"Nieprawidłowa struktura danych z API GeckoTerminal: brak data lub attributes")
-                self._state = None
                 self._available = False
+            
+            self._notify_listeners()
+                
         except Exception as e:
             _LOGGER.error(f"Błąd pobierania danych z GeckoTerminal: {e}")
-            self._state = None
             self._available = False
+            self._notify_listeners()
 
     def _fetch_data(self, url):
         """Fetch data from API."""
@@ -248,3 +228,198 @@ class GeckoTerminalSensor(SensorEntity):
         except Exception as e:
             _LOGGER.error(f"Błąd pobierania danych: {e}")
             return None
+    
+    def _notify_listeners(self):
+        """Notify all listeners about a data update."""
+        for listener in self._listeners:
+            listener()
+
+class GeckoTerminalBaseSensor(SensorEntity):
+    """Base class for GeckoTerminal sensors."""
+    
+    def __init__(self, data_source, entry_id, name, network, pool_address, suffix=""):
+        """Initialize the sensor."""
+        self._data_source = data_source
+        self._entry_id = entry_id
+        self._name = f"{name}{suffix}"
+        self._network = network
+        self._pool_address = pool_address
+        self._state = None
+        self._attrs = {}
+        
+        # Unikalny ID dla sensora
+        self._attr_unique_id = f"{DOMAIN}_{network}_{pool_address}_{suffix.lower().replace(' ', '_')}"
+        
+        # Informacje o urządzeniu
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{DOMAIN}_{network}_{pool_address}")},
+            "name": f"{name} ({network})",
+            "manufacturer": "GeckoTerminal",
+            "model": f"Pool: {pool_address}",
+            "sw_version": "1.2.1",
+            "via_device": (DOMAIN, network),
+        }
+        
+        # Zarejestruj sensor jako słuchacza aktualizacji danych
+        data_source.register_listener(self._handle_data_update)
+    
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+    
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self._data_source.available
+    
+    @property
+    def scan_interval(self):
+        """Return the scan interval for this entity."""
+        return self._data_source.scan_interval
+    
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return self._attrs
+    
+    def _handle_data_update(self):
+        """Handle data update from the data source."""
+        self.async_write_ha_state()
+    
+    async def async_update(self):
+        """Fetch new state data for the sensor."""
+        await self._data_source.async_update()
+
+class GeckoTerminalPriceSensor(GeckoTerminalBaseSensor):
+    """Representation of a GeckoTerminal price sensor."""
+    
+    def __init__(self, data_source, entry_id, name, network, pool_address, decimal_places):
+        """Initialize the sensor."""
+        super().__init__(data_source, entry_id, name, network, pool_address)
+        self._decimal_places = decimal_places
+        self._attr_native_unit_of_measurement = "USD"
+    
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend."""
+        return "mdi:currency-usd"
+    
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        if self._data_source.data is None:
+            return None
+        
+        price = self._data_source.data.get("base_token_price_usd")
+        if price is None:
+            return None
+        
+        # Pobierz podstawowe informacje
+        base_token_symbol = self._data_source.data.get("base_token_symbol", "")
+        quote_token_symbol = self._data_source.data.get("quote_token_symbol", "")
+        
+        # Dodaj podstawowe atrybuty
+        self._attrs["base_token_symbol"] = base_token_symbol
+        self._attrs["quote_token_symbol"] = quote_token_symbol
+        self._attrs["pool_name"] = self._data_source.data.get("name", f"{base_token_symbol}/{quote_token_symbol}")
+        self._attrs["pool_address"] = self._pool_address
+        
+        # Dodaj zmianę ceny, jeśli dostępna
+        if "price_change_percentage" in self._data_source.data:
+            price_changes = self._data_source.data["price_change_percentage"]
+            for period, value in price_changes.items():
+                self._attrs[f"price_change_{period}"] = f"{value}%"
+        
+        # Dodaj informację o czasie ostatniej aktualizacji
+        self._attrs["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        return price
+
+class GeckoTerminalFormattedPriceSensor(GeckoTerminalBaseSensor):
+    """Representation of a GeckoTerminal formatted price sensor."""
+    
+    def __init__(self, data_source, entry_id, name, network, pool_address, decimal_places):
+        """Initialize the sensor."""
+        super().__init__(data_source, entry_id, name, network, pool_address, " Cena Sformatowana")
+        self._decimal_places = decimal_places
+        self._attr_native_unit_of_measurement = "USD"
+    
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend."""
+        return "mdi:currency-usd-circle"
+    
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        if self._data_source.data is None:
+            return None
+        
+        price = self._data_source.data.get("base_token_price_usd")
+        if price is None:
+            return None
+        
+        # Dodaj informację o liczbie miejsc po przecinku
+        self._attrs["decimal_places"] = self._decimal_places
+        
+        # Formatuj cenę z określoną liczbą miejsc po przecinku
+        try:
+            return format_price(price, self._decimal_places)
+        except Exception as e:
+            _LOGGER.error(f"Błąd formatowania ceny: {e}")
+            return None
+
+class GeckoTerminalVolumeSensor(GeckoTerminalBaseSensor):
+    """Representation of a GeckoTerminal volume sensor."""
+    
+    def __init__(self, data_source, entry_id, name, network, pool_address):
+        """Initialize the sensor."""
+        super().__init__(data_source, entry_id, name, network, pool_address, " Wolumen 24h")
+        self._attr_native_unit_of_measurement = "USD"
+    
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend."""
+        return "mdi:chart-line"
+    
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        if self._data_source.data is None:
+            return None
+        
+        # Pobierz wolumen 24h
+        if "volume_usd" in self._data_source.data and "h24" in self._data_source.data["volume_usd"]:
+            volume_24h = self._data_source.data["volume_usd"]["h24"]
+            self._attrs["formatted_volume"] = format_fdv(volume_24h)
+            return float(volume_24h)
+        
+        return None
+
+class GeckoTerminalFDVSensor(GeckoTerminalBaseSensor):
+    """Representation of a GeckoTerminal FDV sensor."""
+    
+    def __init__(self, data_source, entry_id, name, network, pool_address):
+        """Initialize the sensor."""
+        super().__init__(data_source, entry_id, name, network, pool_address, " FDV")
+        self._attr_native_unit_of_measurement = "USD"
+    
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend."""
+        return "mdi:cash-multiple"
+    
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        if self._data_source.data is None:
+            return None
+        
+        # Pobierz FDV
+        if "fdv_usd" in self._data_source.data:
+            fdv = self._data_source.data["fdv_usd"]
+            self._attrs["formatted_fdv"] = format_fdv(fdv)
+            return float(fdv)
+        
+        return None

@@ -8,9 +8,9 @@
           "name": "Nazwa sensora",
           "network": "Sieć (np. ethereum, bsc, abstract)",
           "pool_address": "Adres puli",
-          "show_volume": "Pokaż wolumen 24h",
-          "decimal_places": "Liczba miejsc po przecinku (cena)",
-          "show_fdv": "Pokaż wycenę FDV w czytelnym formacie",
+          "show_volume": "Dodaj osobny sensor wolumenu 24h",
+          "decimal_places": "Liczba miejsc po przecinku dla sformatowanej ceny",
+          "show_fdv": "Dodaj osobny sensor FDV",
           "update_interval": "Częstotliwość aktualizacji (sekundy, 5-60)"
         }
       }
@@ -34,10 +34,45 @@
           "name": "Nazwa sensora",
           "network": "Sieć",
           "pool_address": "Adres puli",
-          "show_volume": "Pokaż wolumen 24h",
-          "decimal_places": "Liczba miejsc po przecinku (cena)",
-          "show_fdv": "Pokaż wycenę FDV w czytelnym formacie",
+          "show_volume": "Dodaj osobny sensor wolumenu 24h",
+          "decimal_places": "Liczba miejsc po przecinku dla sformatowanej ceny",
+          "show_fdv": "Dodaj osobny sensor FDV",
           "update_interval": "Częstotliwość aktualizacji (sekundy, 5-60)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "geckoterminal_price": {
+        "name": "Cena",
+        "state_attributes": {
+          "base_token_symbol": "Symbol tokenu bazowego",
+          "quote_token_symbol": "Symbol tokenu kwotowanego",
+          "pool_name": "Nazwa puli",
+          "pool_address": "Adres puli",
+          "price_change_h1": "Zmiana ceny 1h",
+          "price_change_h6": "Zmiana ceny 6h",
+          "price_change_h24": "Zmiana ceny 24h",
+          "last_updated": "Ostatnia aktualizacja"
+        }
+      },
+      "geckoterminal_formatted_price": {
+        "name": "Cena Sformatowana",
+        "state_attributes": {
+          "decimal_places": "Liczba miejsc po przecinku"
+        }
+      },
+      "geckoterminal_volume": {
+        "name": "Wolumen 24h",
+        "state_attributes": {
+          "formatted_volume": "Sformatowany wolumen"
+        }
+      },
+      "geckoterminal_fdv": {
+        "name": "FDV",
+        "state_attributes": {
+          "formatted_fdv": "Sformatowana wycena FDV"
         }
       }
     }

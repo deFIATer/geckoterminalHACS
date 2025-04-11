@@ -8,9 +8,9 @@
           "name": "Sensor name",
           "network": "Network (e.g. ethereum, bsc, abstract)",
           "pool_address": "Pool address",
-          "show_volume": "Show 24h volume",
-          "decimal_places": "Decimal places (price)",
-          "show_fdv": "Show FDV in readable format",
+          "show_volume": "Add separate 24h volume sensor",
+          "decimal_places": "Decimal places for formatted price",
+          "show_fdv": "Add separate FDV sensor",
           "update_interval": "Update frequency (seconds, 5-60)"
         }
       }
@@ -34,10 +34,45 @@
           "name": "Sensor name",
           "network": "Network",
           "pool_address": "Pool address",
-          "show_volume": "Show 24h volume",
-          "decimal_places": "Decimal places (price)",
-          "show_fdv": "Show FDV in readable format",
+          "show_volume": "Add separate 24h volume sensor",
+          "decimal_places": "Decimal places for formatted price",
+          "show_fdv": "Add separate FDV sensor",
           "update_interval": "Update frequency (seconds, 5-60)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "geckoterminal_price": {
+        "name": "Price",
+        "state_attributes": {
+          "base_token_symbol": "Base token symbol",
+          "quote_token_symbol": "Quote token symbol",
+          "pool_name": "Pool name",
+          "pool_address": "Pool address",
+          "price_change_h1": "Price change 1h",
+          "price_change_h6": "Price change 6h",
+          "price_change_h24": "Price change 24h",
+          "last_updated": "Last updated"
+        }
+      },
+      "geckoterminal_formatted_price": {
+        "name": "Formatted Price",
+        "state_attributes": {
+          "decimal_places": "Decimal places"
+        }
+      },
+      "geckoterminal_volume": {
+        "name": "24h Volume",
+        "state_attributes": {
+          "formatted_volume": "Formatted volume"
+        }
+      },
+      "geckoterminal_fdv": {
+        "name": "FDV",
+        "state_attributes": {
+          "formatted_fdv": "Formatted FDV"
         }
       }
     }
