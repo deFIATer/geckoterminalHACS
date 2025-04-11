@@ -1,0 +1,8 @@
+{
+  "name": "GeckoTerminal",
+  "render_readme": true,
+  "zip_release": true,
+  "filename": "geckoterminal.zip",
+  "country": ["PL"],
+  "homeassistant": "2025.4.1"
+}
