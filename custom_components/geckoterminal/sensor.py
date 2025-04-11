@@ -35,6 +35,8 @@ async def async_setup_entry(
     # Tworzymy źródło danych, które będzie współdzielone przez wszystkie sensory
     data_source = GeckoTerminalDataSource(hass, network, pool_address, update_interval)
     
+    entities = []
+    
     # Główny sensor ceny
     price_sensor = GeckoTerminalPriceSensor(
         data_source, 
@@ -44,8 +46,18 @@ async def async_setup_entry(
         pool_address, 
         decimal_places
     )
+    entities.append(price_sensor)
     
-    entities = [price_sensor]
+    # Sensor ceny z określoną liczbą miejsc po przecinku
+    formatted_price_sensor = GeckoTerminalFormattedPriceSensor(
+        data_source,
+        entry.entry_id,
+        name,
+        network,
+        pool_address,
+        decimal_places
+    )
+    entities.append(formatted_price_sensor)
     
     # Sensor wolumenu 24h, jeśli opcja włączona
     if show_volume:
@@ -69,17 +81,7 @@ async def async_setup_entry(
         )
         entities.append(fdv_sensor)
     
-    # Sensor ceny z określoną liczbą miejsc po przecinku
-    formatted_price_sensor = GeckoTerminalFormattedPriceSensor(
-        data_source,
-        entry.entry_id,
-        name,
-        network,
-        pool_address,
-        decimal_places
-    )
-    entities.append(formatted_price_sensor)
-    
+    # Dodajemy encje dopiero po ich całkowitej inicjalizacji
     async_add_entities(entities, True)
 
 def validate_pool_address(network, pool_address):
@@ -232,14 +234,19 @@ class GeckoTerminalDataSource:
     def _notify_listeners(self):
         """Notify all listeners about a data update."""
         for listener in self._listeners:
-            listener()
+            try:
+                listener()
+            except Exception as e:
+                _LOGGER.error(f"Błąd podczas powiadamiania słuchacza: {e}")
 
 class GeckoTerminalBaseSensor(SensorEntity):
     """Base class for GeckoTerminal sensors."""
     
     def __init__(self, data_source, entry_id, name, network, pool_address, suffix=""):
         """Initialize the sensor."""
+        super().__init__()
         self._data_source = data_source
+        self.hass = data_source.hass
         self._entry_id = entry_id
         self._name = f"{name}{suffix}"
         self._network = network
@@ -256,7 +263,7 @@ class GeckoTerminalBaseSensor(SensorEntity):
             "name": f"{name} ({network})",
             "manufacturer": "GeckoTerminal",
             "model": f"Pool: {pool_address}",
-            "sw_version": "1.2.1",
+            "sw_version": "1.3.0",
             "via_device": (DOMAIN, network),
         }
         
@@ -285,7 +292,12 @@ class GeckoTerminalBaseSensor(SensorEntity):
     
     def _handle_data_update(self):
         """Handle data update from the data source."""
-        self.async_write_ha_state()
+        try:
+            # Sprawdź, czy hass jest dostępny przed wywołaniem async_write_ha_state
+            if hasattr(self, 'hass') and self.hass is not None:
+                self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.error(f"Błąd podczas aktualizacji stanu encji: {e}")
     
     async def async_update(self):
         """Fetch new state data for the sensor."""
