@@ -87,10 +87,16 @@ class GeckoTerminalOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Manage the options."""
         if user_input is not None:
+            _LOGGER.debug(f"Zapisywanie opcji GeckoTerminal: {user_input}")
             return self.async_create_entry(title="", data=user_input)
 
-        # Pobierz obecne ustawienia
-        data = {**self.config_entry.data}
+        # Pobierz obecne ustawienia - najpierw z options, jeśli są, potem z data
+        if self.config_entry.options:
+            data = {**self.config_entry.options}
+            _LOGGER.debug(f"Używam opcji z config_entry.options: {data}")
+        else:
+            data = {**self.config_entry.data}
+            _LOGGER.debug(f"Używam opcji z config_entry.data: {data}")
         
         # Dodaj brakujące opcje z domyślnymi wartościami, jeśli nie istnieją
         if CONF_SHOW_VOLUME not in data:
@@ -101,6 +107,8 @@ class GeckoTerminalOptionsFlow(config_entries.OptionsFlow):
             data[CONF_SHOW_FDV] = True
         if CONF_UPDATE_INTERVAL not in data:
             data[CONF_UPDATE_INTERVAL] = DEFAULT_UPDATE_INTERVAL
+
+        _LOGGER.debug(f"Finalne wartości opcji do wyświetlenia: {data}")
 
         return self.async_show_form(
             step_id="init",

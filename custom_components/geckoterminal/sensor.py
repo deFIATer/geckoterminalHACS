@@ -19,25 +19,34 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ):
     """Set up GeckoTerminal sensors based on config entry."""
-    _LOGGER.debug(f"Setting up sensor for GeckoTerminal entry: {entry.data}")
+    _LOGGER.debug(f"Setting up sensor for GeckoTerminal entry. Data: {entry.data}, Options: {entry.options}")
     
     # Pobierz dane z konfiguracji
     name = entry.data[CONF_NAME]
     network = entry.data[CONF_NETWORK]
     pool_address = entry.data[CONF_POOL_ADDRESS]
     
-    # Pobierz opcje z konfiguracji lub użyj domyślnych wartości
-    show_volume = entry.data.get(CONF_SHOW_VOLUME, True)
-    decimal_places = entry.data.get(CONF_DECIMAL_PLACES, 2)
-    show_fdv = entry.data.get(CONF_SHOW_FDV, True)
-    update_interval = entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+    # Pobierz opcje z konfiguracji - najpierw z options, jeśli są, potem z data
+    if entry.options:
+        config = {**entry.options}
+        _LOGGER.debug(f"Używam opcji z entry.options: {config}")
+    else:
+        config = {**entry.data}
+        _LOGGER.debug(f"Używam opcji z entry.data: {config}")
+    
+    show_volume = config.get(CONF_SHOW_VOLUME, True)
+    decimal_places = config.get(CONF_DECIMAL_PLACES, 2)
+    show_fdv = config.get(CONF_SHOW_FDV, True)
+    update_interval = config.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+    
+    _LOGGER.debug(f"Używam następujących opcji: show_volume={show_volume}, decimal_places={decimal_places}, show_fdv={show_fdv}, update_interval={update_interval}")
     
     # Tworzymy źródło danych, które będzie współdzielone przez wszystkie sensory
     data_source = GeckoTerminalDataSource(hass, network, pool_address, update_interval)
     
     entities = []
     
-    # Główny sensor ceny
+    # Główny sensor ceny z liczbą miejsc po przecinku
     price_sensor = GeckoTerminalPriceSensor(
         data_source, 
         entry.entry_id, 
@@ -47,17 +56,6 @@ async def async_setup_entry(
         decimal_places
     )
     entities.append(price_sensor)
-    
-    # Sensor ceny z określoną liczbą miejsc po przecinku
-    formatted_price_sensor = GeckoTerminalFormattedPriceSensor(
-        data_source,
-        entry.entry_id,
-        name,
-        network,
-        pool_address,
-        decimal_places
-    )
-    entities.append(formatted_price_sensor)
     
     # Sensor wolumenu 24h, jeśli opcja włączona
     if show_volume:
@@ -263,7 +261,7 @@ class GeckoTerminalBaseSensor(SensorEntity):
             "name": f"{name} ({network})",
             "manufacturer": "GeckoTerminal",
             "model": f"Pool: {pool_address}",
-            "sw_version": "1.3.0",
+            "sw_version": "1.3.2",
             "via_device": (DOMAIN, network),
         }
         
@@ -336,6 +334,7 @@ class GeckoTerminalPriceSensor(GeckoTerminalBaseSensor):
         self._attrs["quote_token_symbol"] = quote_token_symbol
         self._attrs["pool_name"] = self._data_source.data.get("name", f"{base_token_symbol}/{quote_token_symbol}")
         self._attrs["pool_address"] = self._pool_address
+        self._attrs["decimal_places"] = self._decimal_places
         
         # Dodaj zmianę ceny, jeśli dostępna
         if "price_change_percentage" in self._data_source.data:
@@ -346,41 +345,12 @@ class GeckoTerminalPriceSensor(GeckoTerminalBaseSensor):
         # Dodaj informację o czasie ostatniej aktualizacji
         self._attrs["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        return price
-
-class GeckoTerminalFormattedPriceSensor(GeckoTerminalBaseSensor):
-    """Representation of a GeckoTerminal formatted price sensor."""
-    
-    def __init__(self, data_source, entry_id, name, network, pool_address, decimal_places):
-        """Initialize the sensor."""
-        super().__init__(data_source, entry_id, name, network, pool_address, " Cena Sformatowana")
-        self._decimal_places = decimal_places
-        self._attr_native_unit_of_measurement = "USD"
-    
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend."""
-        return "mdi:currency-usd-circle"
-    
-    @property
-    def native_value(self):
-        """Return the state of the sensor."""
-        if self._data_source.data is None:
-            return None
-        
-        price = self._data_source.data.get("base_token_price_usd")
-        if price is None:
-            return None
-        
-        # Dodaj informację o liczbie miejsc po przecinku
-        self._attrs["decimal_places"] = self._decimal_places
-        
         # Formatuj cenę z określoną liczbą miejsc po przecinku
         try:
             return format_price(price, self._decimal_places)
         except Exception as e:
             _LOGGER.error(f"Błąd formatowania ceny: {e}")
-            return None
+            return price
 
 class GeckoTerminalVolumeSensor(GeckoTerminalBaseSensor):
     """Representation of a GeckoTerminal volume sensor."""

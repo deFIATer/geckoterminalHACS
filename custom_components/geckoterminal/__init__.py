@@ -30,10 +30,19 @@ async def async_setup(hass: HomeAssistant, config):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up GeckoTerminal from a config entry."""
-    _LOGGER.debug(f"Setting up GeckoTerminal entry: {entry.data}")
+    _LOGGER.debug(f"Setting up GeckoTerminal entry. Data: {entry.data}, Options: {entry.options}")
     
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = entry.data
+    
+    # Zapisz dane i opcje
+    if entry.options:
+        config = {**entry.data, **entry.options}
+        _LOGGER.debug(f"Łączę dane i opcje: {config}")
+    else:
+        config = entry.data
+        _LOGGER.debug(f"Używam tylko danych bez opcji: {config}")
+    
+    hass.data[DOMAIN][entry.entry_id] = config
     
     # Forward the setup to the sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -45,6 +54,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
     """Handle options update."""
+    _LOGGER.debug(f"Aktualizacja opcji GeckoTerminal. Dane: {entry.data}, Opcje: {entry.options}")
+    
+    # Zaktualizuj dane w hass.data
+    if entry.options:
+        config = {**entry.data, **entry.options}
+        _LOGGER.debug(f"Łączę dane i opcje po aktualizacji: {config}")
+    else:
+        config = entry.data
+        _LOGGER.debug(f"Używam tylko danych bez opcji po aktualizacji: {config}")
+    
+    hass.data[DOMAIN][entry.entry_id] = config
+    
+    # Przeładuj integrację
     await hass.config_entries.async_reload(entry.entry_id)
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
